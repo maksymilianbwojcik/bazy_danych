@@ -1,0 +1,428 @@
+1.
+
+CREATE DATABASE s290537
+    WITH 
+    OWNER = postgres
+    ENCODING = 'UTF8'
+    LC_COLLATE = 'English_United States.1252'
+    LC_CTYPE = 'English_United States.1252'
+    TABLESPACE = pg_default
+    CONNECTION LIMIT = -1;
+
+2.
+
+CREATE SCHEMA firma
+    AUTHORIZATION postgres;
+
+3.
+
+CREATE ROLE ksiegowosc WITH
+  NOLOGIN
+  NOSUPERUSER
+  INHERIT
+  NOCREATEDB
+  NOCREATEROLE
+  NOREPLICATION;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA firma
+GRANT SELECT ON TABLES TO ksiegowosc;
+
+4.
+
+# lc_monetary można zmienić na coś co nam pasuje, ale wolę zarobki w $$$
+
+A)
+
+CREATE TABLE firma.pracownicy
+(
+    id_pracownika integer NOT NULL DEFAULT nextval('firma.pracownicy_id_pracownika_seq'::regclass),
+    imie character varying COLLATE pg_catalog."default" NOT NULL,
+    nazwisko character varying COLLATE pg_catalog."default" NOT NULL,
+    adres character varying COLLATE pg_catalog."default" NOT NULL,
+    telefon character varying COLLATE pg_catalog."default"
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE firma.pracownicy
+    OWNER to postgres;
+
+GRANT SELECT ON TABLE firma.pracownicy TO ksiegowosc;
+
+GRANT ALL ON TABLE firma.pracownicy TO postgres;
+
+
+CREATE TABLE firma.godziny
+(
+    id_godziny integer NOT NULL DEFAULT nextval('firma.godziny_id_godziny_seq'::regclass),
+    data date NOT NULL,
+    liczba_godzin smallint NOT NULL,
+    id_pracownika integer NOT NULL DEFAULT nextval('firma.godziny_id_pracownika_seq'::regclass)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE firma.godziny
+    OWNER to postgres;
+
+GRANT SELECT ON TABLE firma.godziny TO ksiegowosc;
+
+GRANT ALL ON TABLE firma.godziny TO postgres;
+
+
+CREATE TABLE firma.pensja_stanowisko
+(
+    id_pensji integer NOT NULL DEFAULT nextval('firma.pensja_stanowisko_id_pensji_seq'::regclass),
+    stanowisko character varying COLLATE pg_catalog."default",
+    kwota money NOT NULL
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE firma.pensja_stanowisko
+    OWNER to postgres;
+
+GRANT SELECT ON TABLE firma.pensja_stanowisko TO ksiegowosc;
+
+GRANT ALL ON TABLE firma.pensja_stanowisko TO postgres;
+
+
+CREATE TABLE firma.premia
+(
+    id_premii integer NOT NULL DEFAULT nextval('firma.premia_id_premii_seq'::regclass),
+    rodzaj character varying COLLATE pg_catalog."default",
+    kwota money NOT NULL
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE firma.premia
+    OWNER to postgres;
+
+GRANT SELECT ON TABLE firma.premia TO ksiegowosc;
+
+GRANT ALL ON TABLE firma.premia TO postgres;
+
+
+CREATE TABLE firma.wynagrodzenie
+(
+    id_wynagrodzenia integer NOT NULL DEFAULT nextval('firma.wynagrodzenie_id_wynagrodzenia_seq'::regclass),
+    data date NOT NULL,
+    id_pracownika integer NOT NULL DEFAULT nextval('firma.wynagrodzenie_id_pracownika_seq'::regclass),
+    id_godziny integer NOT NULL DEFAULT nextval('firma.wynagrodzenie_id_godziny_seq'::regclass),
+    id_pensji integer NOT NULL DEFAULT nextval('firma.wynagrodzenie_id_pensji_seq'::regclass),
+    id_premii integer NOT NULL DEFAULT nextval('firma.wynagrodzenie_id_premii_seq'::regclass)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE firma.wynagrodzenie
+    OWNER to postgres;
+
+GRANT SELECT ON TABLE firma.wynagrodzenie TO ksiegowosc;
+
+GRANT ALL ON TABLE firma.wynagrodzenie TO postgres;
+
+..................................
+
+B)
+
+ALTER TABLE firma.godziny
+    ADD PRIMARY KEY (id_godziny);
+
+ALTER TABLE firma.pensja_stanowisko
+    ADD PRIMARY KEY (id_pensji);
+
+ALTER TABLE firma.pracownicy
+    ADD PRIMARY KEY (id_pracownika);
+
+ALTER TABLE firma.premia
+    ADD PRIMARY KEY (id_premii);
+
+ALTER TABLE firma.wynagrodzenie
+    ADD PRIMARY KEY (id_wynagrodzenia);
+
+C)
+
+ALTER TABLE firma.wynagrodzenie
+    ADD FOREIGN KEY (id_pracownika)
+    REFERENCES firma.pracownicy (id_pracownika) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+ALTER TABLE firma.wynagrodzenie
+    ADD FOREIGN KEY (id_godziny)
+    REFERENCES firma.godziny (id_godziny) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+ALTER TABLE firma.wynagrodzenie
+    ADD FOREIGN KEY (id_premii)
+    REFERENCES firma.premia (id_premii) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+ALTER TABLE firma.wynagrodzenie
+    ADD FOREIGN KEY (id_pensji)
+    REFERENCES firma.pensja_stanowisko (id_pensji) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+ALTER TABLE firma.godziny
+    ADD FOREIGN KEY (id_pracownika)
+    REFERENCES firma.pracownicy (id_pracownika) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+........................
+
+D)
+
+# do przyspieszenia szukania kwoty
+
+CREATE INDEX sort_kwota
+    ON firma.pensja_stanowisko USING btree
+    (kwota varchar_ops ASC NULLS LAST)
+    TABLESPACE pg_default;
+
+# z tego co wiem to powinienem jeszcze zrobić indeksowanie do kluczy obcych (na wypadek gdybym przykładowo szukał wynagrodzenia po największej premii), ale jestem w pracy i nie mam czasu :  ^)
+# może dokończę
+# pgAdmin4 (pgAdmin3 nie ma już wsparcia, nie działa uwierzytelnianie z powodu nieaktualnych bibliotek, ogólnie wszystko się sypie) podrzuca 'operator classes', których nie da się wykorzystać przy danym typie (w moim wypadku podrzuca sortowania dla charów przy typie money, przez co nie można ich wybrać, ale zostawienie pustego pola da wartość domyślną dla typu więc spoko)
+
+CREATE INDEX sort_pracownik
+    ON firma.wynagrodzenie USING btree
+    (id_pracownika ASC NULLS LAST)
+    TABLESPACE pg_default;
+
+CREATE INDEX sort_premia
+    ON firma.wynagrodzenie USING btree
+    (id_premii ASC NULLS FIRST)
+    TABLESPACE pg_default;
+
+COMMENT ON INDEX firma.sort_premia
+    IS 'kiedy chcę szukać po największej premii';
+
+
+
+........................
+
+E)
+
+COMMENT ON TABLE firma.godziny
+  IS 'komentarz do polecenia 4e
+:  ^)';
+
+COMMENT ON TABLE firma.pensja_stanowisko
+  IS 'komentarz do polecenia 4e
+:  ^)';
+
+COMMENT ON TABLE firma.pracownicy
+  IS 'komentarz do polecenia 4e
+:  ^)';
+
+COMMENT ON TABLE firma.premia
+  IS 'komentarz do polecenia 4e
+:  ^)';
+
+COMMENT ON TABLE firma.wynagrodzenie
+  IS 'komentarz do polecenia 4e
+:  ^)';
+
+...............................
+
+F)
+
+# ustawione w poleceniu C), w przeciwieństwie do polecenia B) nie było napisane by użyć polecenia ALTER TABLE
+
+______________________________________
+
+5.
+
+# pgadmin4 rozdziela inserty na pojedyncze rekordy, 50 razy mam kopiować inserty? dodam same tabele
+
+A)
+
+ALTER TABLE firma.godziny
+    ADD COLUMN miesiac smallint GENERATED ALWAYS AS (date_part('month'::text, data)) STORED;
+
+ALTER TABLE firma.godziny
+    ADD COLUMN numer_tygodnia smallint GENERATED ALWAYS AS (extract(week from data)) STORED;
+
+B)
+
+# nie da się w pgAdmin4 gui
+# https://www.postgresql.org/message-id/42970E42.9070501@hillerzentri.de
+
+ALTER TABLE firma.wynagrodzenie ALTER column date TYPE varchar; 
+
+C)
+
+# o co tu chodzi to nie wiem
+# ale jak ustawię najpierw te zmienne na jakąś wartość to potem je mogę w ten sposób pozmieniać
+# ogólnie to myślałem, że skoro pojawia się rekord w tej tabeli to raczej nie będzie tam wartości 0, skutkiem czego ustawiłem kwotę na NOT NULL, mogę jeszcze ustawić wartość domyślną, ale nie wiem ile w tym sensu
+# nie lubię zadań, w których nie ma faktycznego problemu do rozwiązania, tylko coś wyimaginowanego
+
+update firma.premia
+set kwota = 0
+where rodzaj = 'brak';
+
+________________________________
+
+6.
+
+A)
+
+select imie, nazwisko from pracownicy;
+
+............
+
+B)
+
+SELECT wynagrodzenie.id_pracownika FROM wynagrodzenie 
+INNER JOIN pracownicy ON pracownicy.id_pracownika=wynagrodzenie.id_pracownika 
+INNER JOIN pensja_stanowisko ON wynagrodzenie.id_pensji=pensja_stanowisko.id_pensji 
+WHERE kwota>1000;
+
+..............
+
+C)
+
+SELECT wynagrodzenie.id_pracownika FROM firma.wynagrodzenie 
+INNER JOIN firma.pracownicy ON pracownicy.id_pracownika=wynagrodzenie.id_pracownika 
+INNER JOIN firma.pensja_stanowisko ON wynagrodzenie.id_pensji=pensja_stanowisko.id_pensji 
+INNER JOIN firma.premia ON premia.id_premii=wynagrodzenie.id_premii 
+WHERE pensja_stanowisko.kwota::numeric >2000 AND premia.kwota::numeric=200;
+
+................
+
+D)
+
+select imie, nazwisko from firma.pracownicy where imie like 'J%';
+
+..........................
+
+E)
+
+select imie, nazwisko from firma.pracownicy where imie like '%a' and nazwisko like '%n%';
+
+...................
+
+F)
+
+select imie, nazwisko, liczba_godzin-160 as "nadgodziny" from firma.pracownicy inner join firma.godziny on firma.pracownicy.id_pracownika=firma.godziny.id_pracownika where liczba_godzin<160;
+
+...................
+
+G)
+
+SELECT imie, nazwisko FROM firma.pracownicy 
+INNER JOIN firma.wynagrodzenie ON pracownicy.id_pracownika=wynagrodzenie.id_pracownika 
+INNER JOIN firma.pensja_stanowisko ON pensja_stanowisko.id_pensji=wynagrodzenie.id_pensji 
+WHERE pensja_stanowisko.kwota::numeric>1500 AND pensja_stanowisko.kwota::numeric<3000;
+
+...................................
+
+H) 
+
+SELECT imie, nazwisko FROM firma.pracownicy 
+INNER JOIN firma.wynagrodzenie ON wynagrodzenie.id_pracownika=pracownicy.id_pracownika
+INNER JOIN firma.godziny ON godziny.id_pracownika=wynagrodzenie.id_pracownika 
+INNER JOIN firma.premia ON premia.id_premii=wynagrodzenie.id_premii 
+WHERE premia.kwota::numeric = 0 AND godziny.liczba_godzin>160;
+
+_________________________
+
+7.
+
+A)
+
+SELECT imie, nazwisko, kwota FROM firma.pracownicy JOIN firma.wynagrodzenie ON wynagrodzenie.id_pracownika = pracownicy.id_pracownika JOIN firma.pensja_stanowisko 
+ON pensja_stanowisko.id_pensji = wynagrodzenie.id_pensji ORDER BY kwota;
+
+.......................
+
+B)
+
+SELECT imie, nazwisko, pensja_stanowisko.kwota, premia.kwota FROM firma.pracownicy JOIN firma.wynagrodzenie ON wynagrodzenie.id_pracownika = pracownicy.id_pracownika 
+JOIN firma.pensja_stanowisko ON pensja_stanowisko.id_pensji = wynagrodzenie.id_pensji JOIN firma.premia ON premia.id_premii = wynagrodzenie.id_premii ORDER BY pensja_stanowisko.kwota ASC, premia.kwota DESC;
+
+....................
+
+C)
+
+SELECT stanowisko, COUNT(pracownicy.id_pracownika) FROM firma.pracownicy JOIN firma.wynagrodzenie ON wynagrodzenie.id_pracownika = pracownicy.id_pracownika 
+JOIN firma.pensja_stanowisko ON pensja_stanowisko.id_pensji = wynagrodzenie.id_pensji GROUP BY stanowisko;
+
+...........................
+
+D)
+
+SELECT AVG(pensja_stanowisko.kwota)::numeric(10,2) , MIN(pensja_stanowisko.kwota), MAX(pensja_stanowisko.kwota) FROM firma.pracownicy JOIN firma.wynagrodzenie ON wynagrodzenie.id_pracownika = pracownicy.id_pracownika 
+JOIN firma.pensja_stanowisko ON pensja_stanowisko.id_pensji = wynagrodzenie.id_pensji WHERE stanowisko LIKE 'kierownik';
+
+........................
+
+E)
+
+SELECT SUM(kwota) FROM firma.pracownicy JOIN firma.wynagrodzenie ON wynagrodzenie.id_pracownika = pracownicy.id_pracownika JOIN firma.pensja_stanowisko ON pensja_stanowisko.id_pensji = wynagrodzenie.id_pensji;
+
+............................
+
+F)
+
+SELECT stanowisko, SUM(kwota) FROM firma.pracownicy JOIN firma.wynagrodzenie ON wynagrodzenie.id_pracownika = pracownicy.id_pracownika JOIN firma.pensja_stanowisko 
+ON pensja_stanowisko.id_pensji = wynagrodzenie.id_pensji GROUP BY stanowisko;
+
+.........................
+
+G)
+
+SELECT stanowisko, SUM(kwota) FROM firma.pracownicy JOIN firma.wynagrodzenie ON wynagrodzenie.id_pracownika = pracownicy.id_pracownika JOIN firma.pensja_stanowisko 
+ON pensja_stanowisko.id_pensji = wynagrodzenie.id_pensji GROUP BY stanowisko;
+
+....................
+
+H)
+
+DELETE FROM firma.pracownicy WHERE pracownicy.id_pracownika IN (SELECT pracownicy.id_pracownika FROM firma.pracownicy JOIN firma.wynagrodzenie ON wynagrodzenie.id_pracownika = pracownicy.id_pracownika 
+JOIN firma.pensja_stanowisko ON pensja_stanowisko.id_pensji = wynagrodzenie.id_pensji WHERE kwota < 1200);
+
+___________________________________
+
+8.
+
+A)
+
+UPDATE firma.pracownicy SET telefon = CONCAT('(+48)', telefon);
+
+................
+
+B)
+
+UPDATE firma.pracownicy SET telefon = CONCAT(LEFT(telefon, 5), ' ', SUBSTRING(telefon, 6, 3), '-', SUBSTRING(telefon, 9, 3), '-', RIGHT(telefon, 3));
+
+.....................
+
+C)
+
+SELECT id_pracownika, UPPER(imie), UPPER(nazwisko), UPPER(adres), telefon FROM firma.pracownicy ORDER BY LENGTH(nazwisko) DESC LIMIT 1;
+
+....................
+
+D)
+
+SELECT MD5(CONCAT(pracownicy.id_pracownika, imie, nazwisko, adres, telefon, kwota)) FROM firma.pracownicy JOIN firma.wynagrodzenie ON wynagrodzenie.id_pracownika = pracownicy.id_pracownika 
+JOIN firma.pensja_stanowisko ON pensja_stanowisko.id_pensji = wynagrodzenie.id_pensji;
+
+___________________________
+
+9.
+
+SELECT CONCAT('Pracownik ', pracownicy.imie, ' ', pracownicy.nazwisko, ', w dniu ', godziny.data,' otrzymal pensje calkowita na kwote ', (pensja_stanowisko.kwota + premia.kwota), ', gdzie wynagrodzenie zasadnicze wynosilo: ', 
+pensja_stanowisko.kwota, ' zl, premia:', premia.kwota, ' zl, liczba nadgodzin: ', (CASE WHEN godziny.liczba_godzin <= 160 THEN 0 ELSE (godziny.liczba_godzin-160) END)) FROM firma.pracownicy INNER JOIN firma.wynagrodzenie ON wynagrodzenie.id_pracownika = pracownicy.id_pracownika 
+INNER JOIN firma.godziny ON godziny.id_godziny = wynagrodzenie.id_godziny INNER JOIN firma.pensja_stanowisko ON wynagrodzenie.id_pensji = pensja_stanowisko.id_pensji INNER JOIN firma.premia ON premia.id_premii = wynagrodzenie.id_premii;
