@@ -265,7 +265,6 @@ C)
 # o co tu chodzi to nie wiem
 # ale jak ustawię najpierw te zmienne na jakąś wartość to potem je mogę w ten sposób pozmieniać
 # ogólnie to myślałem, że skoro pojawia się rekord w tej tabeli to raczej nie będzie tam wartości 0, skutkiem czego ustawiłem kwotę na NOT NULL, mogę jeszcze ustawić wartość domyślną, ale nie wiem ile w tym sensu
-# nie lubię zadań, w których nie ma faktycznego problemu do rozwiązania, tylko coś wyimaginowanego
 
 update firma.premia
 set kwota = 0
