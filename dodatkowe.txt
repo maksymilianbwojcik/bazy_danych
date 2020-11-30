@@ -1,0 +1,48 @@
+1.
+
+select matchid, player from gole where teamid='POL';
+
+2.
+
+select mecze.* from mecze inner join gole on mecze.id=gole.matchid where id=1004 and gole.player LIKE 'J%';
+
+3.
+
+SELECT player, druzyny.teamname,stadium, mdate FROM mecze JOIN gole ON (id=matchid) inner join druzyny on gole.teamid=druzyny.id and druzyny.teamname='Poland';
+
+4.
+
+SELECT MECZE.TEAM1,
+	MECZE.TEAM2,
+	PLAYER
+FROM MECZE
+INNER JOIN GOLE ON MECZE.ID = GOLE.MATCHID
+AND GOLE.PLAYER LIKE 'Mario%'
+INNER JOIN DRUZYNY ON MECZE.TEAM1 = DRUZYNY.ID
+OR MECZE.TEAM2 = DRUZYNY.ID;
+
+5.
+
+select player, teamid, druzyny.coach, gtime from gole inner join druzyny on teamid=id where gtime<=10;
+
+6.
+select teamname, mecze.mdate from druzyny inner join mecze on druzyny.id=team1 or druzyny.id=team2 where coach='Franciszek Smuda';
+
+7.
+
+select distinct(player) from gole inner join mecze on id=matchid where mecze.stadium LIKE '%Warsaw%';
+
+8.
+
+SELECT player, gtime FROM mecze JOIN gole ON matchid = id and teamid='GRE'
+WHERE (team1='GER' AND team2='GRE')
+
+9.
+
+select teamname, count(gole.teamid) from druzyny inner join gole on id=teamid group by teamname, gole.teamid order by count(gole.teamid) DESC;
+
+10.
+
+select stadium, count(gole.matchid) from mecze inner join gole on id=matchid group by stadium order by count(gole.matchid) desc;
+
+
